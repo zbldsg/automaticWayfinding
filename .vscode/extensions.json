@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "Vue.volar",
+    "PKief.material-icon-theme",
+    "akamud.vscode-theme-onedark",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "Vue.vscode-typescript-vue-plugin",
+    "eamodio.gitlens",
+    "dariofuzinato.vue-peek",
+    "hollowtree.vue-snippets",
+    "SimonSiefke.svg-preview",
+    "MS-CEINTL.vscode-language-pack-zh-hans",
+    "VisualStudioExptTeam.vscodeintellicode",
+    "ant-design-vue.vscode-ant-design-vue-helper",
+  ]
+}
