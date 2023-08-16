@@ -2,6 +2,7 @@
 import {ref, onMounted} from "vue";
 import * as THREE from "three";
 import AStar from "javascript-astar";
+import {gsap} from "gsap";
 
 import {onWindowResize} from "./Common/resize";
 import {initAll} from "./Init/init";
@@ -132,6 +133,8 @@ function generateRoad(grid, result) {
   const pathGeometry = new THREE.BufferGeometry().setFromPoints(arr.map(node => new THREE.Vector3(node.x, node.y, node.z)));
   const pathLine = new THREE.Line(pathGeometry, pathMaterial);
   current.scene.add(pathLine);
+
+  anima(arr)
 }
 
 function map(grid) {
@@ -202,6 +205,29 @@ function generateRandomGrid(row,col) {
     grid.push(row);
   }
   return grid;
+}
+
+function anima(arr) {
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const black = new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: .8});
+  const cube = new THREE.Mesh(box, black);
+
+  cube.position.set(arr[0].x, .5, arr[0].z)
+  current.scene.add(cube)
+
+  let count = 0;
+
+  gsap.to(cube.position, {
+    duration: 5,
+    onUpdate:()=> {
+      if(Math.random() < 0.2) {
+        if(count < arr.length) {
+          cube.position.set(arr[count].x, .5, arr[count].z);
+          count++
+        }
+      }
+    },
+  });
 }
 
 function generateBox(grid) {
