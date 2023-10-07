@@ -7,6 +7,7 @@ import { gsap } from "gsap";
 import { onWindowResize } from "./Common/resize";
 import { deleteGroupFromScene } from "./Common/clean";
 import { initAll } from "./Init/init";
+import { generateFloor } from "./Generate/floor";
 
 const renderers = {
   renderer: null,
@@ -26,7 +27,7 @@ let dom;
 const baseSceneData = {
   id: null,
   name: null,
-  path: "./model/city.glb",
+  path: "./model/1.glb",
   init: false,
   camera: null,
   control: null,
@@ -39,9 +40,14 @@ let cube,
   boxGroup = new THREE.Group(),
   edgeGroup = new THREE.Group();
 
+let boxSize = 0.3;
+let boxOffset = boxSize * 0.5;
+
 let raycaster, mouse;
 let black = new THREE.Color(0x000000);
 let white = new THREE.Color(0xffffff);
+
+let newGrid;
 
 onMounted(() => {
   dom = document.querySelector("#test");
@@ -56,10 +62,11 @@ onMounted(() => {
 function init() {
   let data = { ...baseSceneData };
   initAll(renderers, data, dom, current);
+  generateFloor(data);
   initRaycaster();
   window.addEventListener("click", onMouseClick, false);
   //初始化网格
-  generateLine();
+  // generateLine();
   animate();
 }
 
@@ -110,7 +117,7 @@ function render() {
 }
 
 function generateLine() {
-  const gridHelper = new THREE.GridHelper(200, 200);
+  const gridHelper = new THREE.GridHelper(200, 200 / boxSize);
   current.scene.add(gridHelper);
 }
 
@@ -186,7 +193,7 @@ function generateBoxGroup(grid: number[][]) {
   const inner = grid[0].length;
 
   const matrix = new THREE.Matrix4();
-  const box = new THREE.BoxGeometry(1, 1, 1);
+  const box = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
   const black = new THREE.MeshBasicMaterial({
     color: 0x000000,
     transparent: true,
@@ -198,7 +205,11 @@ function generateBoxGroup(grid: number[][]) {
     opacity: 0.1,
   });
   const edges = new THREE.EdgesGeometry(box);
-  const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.4,
+  });
 
   for (let i = 0; i < outer; i++) {
     //内部创建一个group
@@ -213,9 +224,9 @@ function generateBoxGroup(grid: number[][]) {
       // 将矩阵应用到立方体的位置
       //x 为二维数组里层长度 减去内层长度的一半(移动到中心)
       //y 为二维数组外层长度 减去外层长度的一半(移动到中心)
-      let x = j - inner / 2 + 0.5;
-      let z = i - outer / 2 + 0.5;
-      matrix.makeTranslation(x, 0.5, z);
+      let x = (j - inner / 2) * boxSize + boxOffset;
+      let z = (i - outer / 2) * boxSize + boxOffset;
+      matrix.makeTranslation(x, boxOffset, z);
       cube.applyMatrix4(matrix);
       innerGroup.add(cube);
 
@@ -244,24 +255,28 @@ function generateRoad(grid: number[][], result: any) {
   //总宽度 z轴 二维数组的外层数组
   const width = grid.length;
 
-  let xNum = -0.5;
-  let zNum = -0.5;
+  let xNum = -0.05;
+  let zNum = -0.05;
 
   let arr = [];
   for (let i = 0; i < result.length; i++) {
     // result 的结果是这样[x:1,y:0] [x:1,y:1] [x:2,y:1] [x:3,y:1] [x:3,y:2] [x:3,y:3] [x:3,y:4] [x:3,y:5]
     arr.push(
       new THREE.Vector3(
-        result[i].y - width / 2 - xNum,
-        0.5,
-        result[i].x - length / 2 - zNum
+        (result[i].y - width / 2) * boxSize - xNum,
+        boxOffset,
+        (result[i].x - length / 2) * boxSize - zNum
       )
     );
   }
 
   //加入起点
   arr.unshift(
-    new THREE.Vector3(0 - width / 2 - xNum, 0.5, 0 - length / 2 - zNum)
+    new THREE.Vector3(
+      (0 - width / 2) * boxSize - xNum,
+      boxOffset,
+      (0 - length / 2) * boxSize - zNum
+    )
   );
 
   const pathMaterial = new THREE.LineBasicMaterial({
@@ -279,7 +294,7 @@ function generateRoad(grid: number[][], result: any) {
 
 function anima(arr) {
   if (!cube) {
-    const box = new THREE.BoxGeometry(1, 1, 1);
+    const box = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
     const black = new THREE.MeshBasicMaterial({
       color: 0xff0000,
       transparent: true,
@@ -287,10 +302,10 @@ function anima(arr) {
     });
     cube = new THREE.Mesh(box, black);
 
-    cube.position.set(arr[0].x, 0.5, arr[0].z);
+    cube.position.set(arr[0].x, boxOffset, arr[0].z);
     current.scene.add(cube);
   } else {
-    cube.position.set(arr[0].x, 0.5, arr[0].z);
+    cube.position.set(arr[0].x, boxOffset, arr[0].z);
   }
 
   let count = 0;
@@ -300,7 +315,7 @@ function anima(arr) {
     onUpdate: () => {
       if (Math.random() < 0.2) {
         if (count < arr.length) {
-          cube.position.set(arr[count].x, 0.5, arr[count].z);
+          cube.position.set(arr[count].x, boxOffset, arr[count].z);
           count++;
         }
       }
@@ -312,7 +327,7 @@ function anima(arr) {
  *
  * @param grid 根据盒子生成数组
  */
-function generateArrayBasedOnBoxes(): number[][] {
+function generateArrayBasedOnBoxes(): void {
   const grid = [];
 
   const outer = boxGroup.children.length;
@@ -328,7 +343,23 @@ function generateArrayBasedOnBoxes(): number[][] {
 
   console.log(grid, "我是数组");
 
-  return grid;
+  newGrid = grid;
+  // return grid;
+}
+
+function resetRoad() {
+  generateArrayBasedOnBoxes();
+  deleteGroupFromScene(current.scene, cube);
+  deleteGroupFromScene(current.scene, line);
+  cube = null;
+  line = null;
+
+  // 执行A*搜索
+  const result = astarSearch(newGrid, row.value - 1, row.value - 1);
+  console.log(result, "result");
+
+  //生成路线
+  generateRoad(newGrid, result);
 }
 
 const row = ref(10);
@@ -338,6 +369,9 @@ const numbers = ref([
   { name: "20*20", value: 20 },
   { name: "30*30", value: 30 },
   { name: "40*40", value: 40 },
+  { name: "50*50", value: 50 },
+  { name: "80*80", value: 80 },
+  { name: "100*100", value: 100 },
 ]);
 </script>
 
@@ -346,7 +380,10 @@ const numbers = ref([
     <div class="menu">
       <button @click="generate">生成地图</button>
       <button @click="deleteAll">删除</button>
-      <button @click="generateArrayBasedOnBoxes">生成数组</button>
+      <div>
+        <!-- <button @click="generateArrayBasedOnBoxes">生成数组</button> -->
+        <button @click="resetRoad">根据数组重新生成路线</button>
+      </div>
       <div>
         <label for="rowSelect">地图大小：</label>
         <select id="rowSelect" v-model="row">
@@ -371,7 +408,7 @@ const numbers = ref([
     z-index: 200;
     position: absolute;
     padding-left: 20px;
-    height: 80px;
+    height: 100px;
     width: 150px;
     background-color: white;
   }

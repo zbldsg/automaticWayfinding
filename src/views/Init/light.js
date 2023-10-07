@@ -1,13 +1,12 @@
-import * as THREE from 'three'
+import * as THREE from "three";
 
-export function createLight (scene) {
-  let ambientLight = new THREE.AmbientLight(0xFFFFFF,.4)
-  scene.add(ambientLight)
+export function createLight(scene) {
+  let ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  scene.add(ambientLight);
 
   // let sceneLight = new THREE.DirectionalLight(0xffffff,0.5);
   // sceneLight.position.set(0,0,1);
   // scene.add(sceneLight);
-
 
   // 60, 17 ,4.5
   // let spotLight = new THREE.SpotLight(0xffffff, .5);
@@ -29,13 +28,12 @@ export function createLight (scene) {
   // // light3.lookAt(new THREE.Vector3(0, 0, 0))
   // scene.add(light3)
 
-  let light3 = new THREE.DirectionalLight(0xD1D1CE, 0.8)
-  light3.position.set(10, 20, 10)
-  scene.add(light3)
+  let light3 = new THREE.DirectionalLight(0xd1d1ce, 10);
+  light3.position.set(10, -20, 10);
+  scene.add(light3);
 
   // 右上
-  let light4 = new THREE.DirectionalLight(0xD1D1CE, 0.8)
-  light4.position.set(-10, 20, 10)
-  scene.add(light4)
-
+  let light4 = new THREE.DirectionalLight(0xd1d1ce, 10);
+  light4.position.set(-10, -20, 10);
+  scene.add(light4);
 }
