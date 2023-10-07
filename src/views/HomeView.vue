@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import {ref, onMounted} from "vue";
+import { ref, onMounted } from "vue";
 import * as THREE from "three";
 import AStar from "javascript-astar";
-import {gsap} from "gsap";
+import { gsap } from "gsap";
 
-import {onWindowResize} from "./Common/resize";
-import {deleteGroupFromScene} from "./Common/clean";
-import {initAll} from "./Init/init";
+import { onWindowResize } from "./Common/resize";
+import { deleteGroupFromScene } from "./Common/clean";
+import { initAll } from "./Init/init";
 
 const renderers = {
   renderer: null,
@@ -34,14 +34,13 @@ const baseSceneData = {
   sceneObject: null,
 };
 
-let cube,line,boxGroup = new THREE.Group();
+let cube,
+  line,
+  boxGroup = new THREE.Group();
 
 const menu = ref({
   display: true,
 });
-
-
-
 
 onMounted(() => {
   dom = document.querySelector("#test");
@@ -54,16 +53,10 @@ onMounted(() => {
 });
 
 function init() {
-  let data = {...baseSceneData};
+  let data = { ...baseSceneData };
   initAll(renderers, data, dom, current);
-  // generateFloor(data);
-  // initGrid();
-  // initLine();
-  // initBox();
-  // initT();
-
   //初始化网格
-  generateLine()
+  generateLine();
   animate();
 }
 
@@ -79,8 +72,7 @@ function render() {
   renderers.labelRenderer.render(current.scene, current.camera);
 }
 
-
-function initT(row,col) {
+function initT(row, col) {
   //length必须是偶数
   // let grid = [
   //   [1, 0, 1, 0, 1, 1],
@@ -92,17 +84,17 @@ function initT(row,col) {
   // let row = 20;
   // let col = 22;
   //随机生成2维数组
-  let grid = generateRandomGrid(row, col)
-  console.log(grid,'grid')
+  let grid = generateRandomGrid(row, col);
+  console.log(grid, "grid");
 
   // 执行A*搜索
   const result = astarSearch(grid, row - 1, col - 1);
-  console.log(result,'result')
+  console.log(result, "result");
 
   //生成box
-  generateBox(grid)
+  generateBox(grid);
   //生成路线
-  generateRoad(grid, result)
+  generateRoad(grid, result);
 }
 
 function generateLine() {
@@ -111,7 +103,7 @@ function generateLine() {
 }
 
 function astarSearch(grid, x, y) {
-  const graph = new AStar.Graph(grid, {diagonal: false});
+  const graph = new AStar.Graph(grid, { diagonal: false });
 
   // 使用 A* 算法寻找路径
   const startNode = graph.grid[0][0];
@@ -127,27 +119,40 @@ function generateRoad(grid, result) {
   //总宽度 z轴 二维数组的外层数组
   const width = grid.length;
 
-  let xNum = -.5
-  let zNum = -.5
+  let xNum = -0.5;
+  let zNum = -0.5;
 
   // let xNum = .5
   // let zNum = -1.5
 
-  let arr = []
+  let arr = [];
   for (let i = 0; i < result.length; i++) {
     // result 的结果是这样[x:1,y:0] [x:1,y:1] [x:2,y:1] [x:3,y:1] [x:3,y:2] [x:3,y:3] [x:3,y:4] [x:3,y:5]
-    arr.push(new THREE.Vector3(result[i].y - width / 2 - xNum, .5, result[i].x - length / 2 - zNum))
+    arr.push(
+      new THREE.Vector3(
+        result[i].y - width / 2 - xNum,
+        0.5,
+        result[i].x - length / 2 - zNum
+      )
+    );
   }
 
   //加入起点
-  arr.unshift(new THREE.Vector3(0 - width / 2 - xNum, .5, 0 - length / 2 - zNum))
+  arr.unshift(
+    new THREE.Vector3(0 - width / 2 - xNum, 0.5, 0 - length / 2 - zNum)
+  );
 
-  const pathMaterial = new THREE.LineBasicMaterial({color: 0xff0000, linewidth: 4});
-  const pathGeometry = new THREE.BufferGeometry().setFromPoints(arr.map(node => new THREE.Vector3(node.x, node.y, node.z)));
+  const pathMaterial = new THREE.LineBasicMaterial({
+    color: 0xff0000,
+    linewidth: 4,
+  });
+  const pathGeometry = new THREE.BufferGeometry().setFromPoints(
+    arr.map((node) => new THREE.Vector3(node.x, node.y, node.z))
+  );
   const pathLine = new THREE.Line(pathGeometry, pathMaterial);
   current.scene.add(pathLine);
 
-  anima(arr)
+  anima(arr);
 }
 
 function generateBox(grid) {
@@ -156,10 +161,18 @@ function generateBox(grid) {
 
   const matrix = new THREE.Matrix4();
   const box = new THREE.BoxGeometry(1, 1, 1);
-  const black = new THREE.MeshBasicMaterial({color: 0x000000, transparent: true, opacity: .8});
-  const white = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: .1});
+  const black = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    opacity: 0.8,
+  });
+  const white = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.1,
+  });
   const edges = new THREE.EdgesGeometry(box);
-  const lineMaterial = new THREE.LineBasicMaterial({color: 0xffffff})
+  const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
   for (let i = 0; i < one; i++) {
     for (let j = 0; j < two; j++) {
@@ -172,9 +185,9 @@ function generateBox(grid) {
       // 将矩阵应用到立方体的位置
       //x 为二维数组里层长度 减去内层长度的一半(移动到中心)
       //y 为二维数组外层长度 减去外层长度的一半(移动到中心)
-      matrix.makeTranslation(j - two / 2 + 0.5, .5, i - one / 2 + 0.5);
+      matrix.makeTranslation(j - two / 2 + 0.5, 0.5, i - one / 2 + 0.5);
       cube.applyMatrix4(matrix);
-      boxGroup.add(cube)
+      boxGroup.add(cube);
 
       const line = new THREE.LineSegments(edges, lineMaterial);
       line.position.set(cube.position.x, cube.position.y, cube.position.z);
@@ -184,27 +197,27 @@ function generateBox(grid) {
 
   current.scene.add(boxGroup);
 
-// 循环遍历二维数组，创建 Three.js 立方体表示地图
-//   for (let i = 0; i < two; i++) {
-//     for (let j = 0; j < one; j++) {
-//       const box = new THREE.BoxGeometry(1, 1, 1);
-//       const material = new THREE.MeshBasicMaterial({color: 0xff0000});
-//       const cube = new THREE.Mesh(box, material);
-//       console.log('i:' + i, 'j:' + j)
-//
-//       // 将矩阵应用到立方体的位置
-//       matrix.makeTranslation(i - two / 2 + 0.5, 0, j - one / 2 + 0.5);
-//       cube.applyMatrix4(matrix);
-//
-//       current.scene.add(cube);
-//
-//       const edges = new THREE.EdgesGeometry(box);
-//       const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
-//       line.position.set(cube.position.x, cube.position.y, cube.position.z);
-//
-//       current.scene.add(line);
-//     }
-//   }
+  // 循环遍历二维数组，创建 Three.js 立方体表示地图
+  //   for (let i = 0; i < two; i++) {
+  //     for (let j = 0; j < one; j++) {
+  //       const box = new THREE.BoxGeometry(1, 1, 1);
+  //       const material = new THREE.MeshBasicMaterial({color: 0xff0000});
+  //       const cube = new THREE.Mesh(box, material);
+  //       console.log('i:' + i, 'j:' + j)
+  //
+  //       // 将矩阵应用到立方体的位置
+  //       matrix.makeTranslation(i - two / 2 + 0.5, 0, j - one / 2 + 0.5);
+  //       cube.applyMatrix4(matrix);
+  //
+  //       current.scene.add(cube);
+  //
+  //       const edges = new THREE.EdgesGeometry(box);
+  //       const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+  //       line.position.set(cube.position.x, cube.position.y, cube.position.z);
+  //
+  //       current.scene.add(line);
+  //     }
+  //   }
 }
 
 function generateRandomGrid(row, col) {
@@ -221,17 +234,20 @@ function generateRandomGrid(row, col) {
 }
 
 function anima(arr) {
-  if(!cube) {
+  if (!cube) {
     const box = new THREE.BoxGeometry(1, 1, 1);
-    const black = new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: .8});
+    const black = new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      transparent: true,
+      opacity: 0.8,
+    });
     cube = new THREE.Mesh(box, black);
 
-    cube.position.set(arr[0].x, .5, arr[0].z)
-    current.scene.add(cube)
+    cube.position.set(arr[0].x, 0.5, arr[0].z);
+    current.scene.add(cube);
   } else {
-    cube.position.set(arr[0].x, .5, arr[0].z)
+    cube.position.set(arr[0].x, 0.5, arr[0].z);
   }
-
 
   let count = 0;
 
@@ -240,8 +256,8 @@ function anima(arr) {
     onUpdate: () => {
       if (Math.random() < 0.2) {
         if (count < arr.length) {
-          cube.position.set(arr[count].x, .5, arr[count].z);
-          count++
+          cube.position.set(arr[count].x, 0.5, arr[count].z);
+          count++;
         }
       }
     },
@@ -354,21 +370,21 @@ function anima(arr) {
 // }
 
 function generate() {
-  console.log(row.value, 'generate')
-  deleteGroupFromScene(current.scene,boxGroup)
-  deleteGroupFromScene(current.scene,cube)
-  deleteGroupFromScene(current.scene,line)
-  initT(row.value,row.value)
+  console.log(row.value, "generate");
+  deleteGroupFromScene(current.scene, boxGroup);
+  deleteGroupFromScene(current.scene, cube);
+  deleteGroupFromScene(current.scene, line);
+  initT(row.value, row.value);
 }
 
-const row = ref(10)
+const row = ref(10);
 
 const numbers = ref([
-  {name:'10*10',value:10},
-  {name:'20*20',value:20},
-  {name:'30*30',value:30},
-  {name:'40*40',value:40},
-])
+  { name: "10*10", value: 10 },
+  { name: "20*20", value: 20 },
+  { name: "30*30", value: 30 },
+  { name: "40*40", value: 40 },
+]);
 </script>
 
 <template>
@@ -378,11 +394,12 @@ const numbers = ref([
       <div>
         <label for="rowSelect">地图大小：</label>
         <select id="rowSelect" v-model="row">
-          <option v-for="num in numbers" :key="num" :value="num.value">{{ num.name }}</option>
+          <option v-for="num in numbers" :key="num" :value="num.value">
+            {{ num.name }}
+          </option>
         </select>
       </div>
     </div>
-
   </div>
 </template>
 
