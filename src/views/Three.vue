@@ -8,6 +8,13 @@ import { onWindowResize } from "./Common/resize";
 import { deleteGroupFromScene } from "./Common/clean";
 import { initAll } from "./Init/init";
 import { generateFloor } from "./Generate/floor";
+import {
+  startDraw,
+  setBlack,
+  setWhite,
+  setStartingPoint,
+  setEndPoint,
+} from "./component/draw";
 
 const renderers = {
   renderer: null,
@@ -35,33 +42,18 @@ const baseSceneData = {
   sceneObject: null,
 };
 
-let cube,
-  line,
-  boxGroup = new THREE.Group(),
-  edgeGroup = new THREE.Group();
+let cube = null;
+let line = null;
+const boxGroup = new THREE.Group();
+const edgeGroup = new THREE.Group();
 
-let boxSize = 0.3;
-let boxOffset = boxSize * 0.5;
+const boxSize = ref(0.6);
 
-let raycaster, mouse;
-let black = new THREE.Color(0x000000);
-let white = new THREE.Color(0xffffff);
+const black = new THREE.Color(0x000000);
+const red = new THREE.Color(0xff0000);
+const green = new THREE.Color(0x00ff00);
 
 let newGrid;
-
-let isMouseDown = false; // 标志鼠标是否按下
-
-let drawColor = black;
-
-const onMouseDown = () => {
-  isMouseDown = true;
-  // current.orbitControls.enabled = false;
-};
-
-const onMouseUp = () => {
-  isMouseDown = false;
-  // current.orbitControls.enabled = true;
-};
 
 onMounted(() => {
   dom = document.querySelector("#test");
@@ -77,47 +69,8 @@ function init() {
   let data = { ...baseSceneData };
   initAll(renderers, data, dom, current);
   generateFloor(data);
-  initRaycaster();
-
-  //初始化网格
-  // generateLine();
+  startDraw(current, boxGroup, activeButton);
   animate();
-}
-
-function initRaycaster() {
-  raycaster = new THREE.Raycaster();
-  mouse = new THREE.Vector2(1, 1);
-}
-
-function onMouseClick(event: MouseEvent): void {
-  //点击事件, 显示标签信息
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  if (isMouseDown) {
-    // 根据在屏幕的二维位置以及相机的矩阵更新射线的位置
-    raycaster.setFromCamera(mouse, current.camera);
-    // 获取射线直线和所有模型相交的数组集合
-    const intersects: Array<THREE.Object3D> = raycaster.intersectObjects(
-      boxGroup.children,
-      true
-    );
-    if (intersects.length > 0 && intersects[0].object) {
-      console.log("点击位置");
-      console.log("x:" + intersects[0].point.x, "z:" + intersects[0].point.z);
-
-      let mesh = intersects[0].object;
-      //如果是白色, 设为黑色
-      // if (mesh.material.color.equals(white)) {
-      mesh.material.color = drawColor;
-      if (mesh.material.color.equals(white)) {
-        mesh.material.opacity = 0.1;
-      } else {
-        mesh.material.opacity = 0.8;
-      }
-      // }
-    }
-  }
 }
 
 function animate() {
@@ -132,11 +85,6 @@ function render() {
   renderers.labelRenderer.render(current.scene, current.camera);
 }
 
-function generateLine() {
-  const gridHelper = new THREE.GridHelper(200, 200 / boxSize);
-  current.scene.add(gridHelper);
-}
-
 function deleteAll() {
   deleteGroupFromScene(current.scene, boxGroup);
   deleteGroupFromScene(current.scene, edgeGroup);
@@ -144,8 +92,8 @@ function deleteAll() {
   deleteGroupFromScene(current.scene, line);
   cube = null;
   line = null;
-  boxGroup = new THREE.Group();
-  edgeGroup = new THREE.Group();
+  boxGroup.clear();
+  edgeGroup.clear();
 }
 
 function generate() {
@@ -167,7 +115,7 @@ function initT(row: number, col: number) {
   console.log(result, "result");
 
   //生成路线
-  generateRoad(grid, result);
+  // generateRoad(grid, result);
 }
 
 /**
@@ -210,22 +158,30 @@ function generateBoxGroup(grid: number[][]) {
   const inner = grid[0].length;
 
   const matrix = new THREE.Matrix4();
-  const box = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+  // const box = new THREE.BoxGeometry(
+  //   boxSize.value,
+  //   boxSize.value,
+  //   boxSize.value
+  // );
+  const box = new THREE.PlaneGeometry(boxSize.value, boxSize.value);
   const black = new THREE.MeshBasicMaterial({
     color: 0x000000,
     transparent: true,
     opacity: 0.8,
+    side: THREE.DoubleSide,
   });
   const white = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
     opacity: 0.1,
+    side: THREE.DoubleSide,
   });
   const edges = new THREE.EdgesGeometry(box);
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0xffffff,
     transparent: true,
     opacity: 0.4,
+    side: THREE.DoubleSide,
   });
 
   for (let i = 0; i < outer; i++) {
@@ -241,15 +197,17 @@ function generateBoxGroup(grid: number[][]) {
       // 将矩阵应用到立方体的位置
       //x 为二维数组里层长度 减去内层长度的一半(移动到中心)
       //y 为二维数组外层长度 减去外层长度的一半(移动到中心)
-      let x = (j - inner / 2) * boxSize + boxOffset;
-      let z = (i - outer / 2) * boxSize + boxOffset;
-      matrix.makeTranslation(x, boxOffset, z);
+      let x = (j - inner / 2) * boxSize.value;
+      let z = (i - outer / 2) * boxSize.value;
+      matrix.makeTranslation(x, 0, z);
       cube.applyMatrix4(matrix);
+      cube.rotation.x = -Math.PI / 2;
       innerGroup.add(cube);
 
       //生成盒子边框
       const edgeLine = new THREE.LineSegments(edges, lineMaterial);
       edgeLine.position.set(cube.position.x, cube.position.y, cube.position.z);
+      edgeLine.rotation.x = -Math.PI / 2;
       edgeGroup.add(edgeLine);
     }
     boxGroup.add(innerGroup);
@@ -272,29 +230,26 @@ function generateRoad(grid: number[][], result: any) {
   //总宽度 z轴 二维数组的外层数组
   const width = grid.length;
 
-  let xNum = -0.05;
-  let zNum = -0.05;
-
   let arr = [];
   for (let i = 0; i < result.length; i++) {
     // result 的结果是这样[x:1,y:0] [x:1,y:1] [x:2,y:1] [x:3,y:1] [x:3,y:2] [x:3,y:3] [x:3,y:4] [x:3,y:5]
     arr.push(
       new THREE.Vector3(
-        (result[i].y - width / 2) * boxSize - xNum,
-        boxOffset,
-        (result[i].x - length / 2) * boxSize - zNum
+        (result[i].y - width / 2) * boxSize.value,
+        0,
+        (result[i].x - length / 2) * boxSize.value
       )
     );
   }
 
   //加入起点
-  arr.unshift(
-    new THREE.Vector3(
-      (0 - width / 2) * boxSize - xNum,
-      boxOffset,
-      (0 - length / 2) * boxSize - zNum
-    )
-  );
+  // arr.unshift(
+  //   new THREE.Vector3(
+  //     (0 - width / 2) * boxSize.value,
+  //     0,
+  //     (0 - length / 2) * boxSize.value
+  //   )
+  // );
 
   const pathMaterial = new THREE.LineBasicMaterial({
     color: 0xff0000,
@@ -311,7 +266,11 @@ function generateRoad(grid: number[][], result: any) {
 
 function anima(arr) {
   if (!cube) {
-    const box = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+    const box = new THREE.BoxGeometry(
+      boxSize.value,
+      boxSize.value,
+      boxSize.value
+    );
     const black = new THREE.MeshBasicMaterial({
       color: 0xff0000,
       transparent: true,
@@ -319,26 +278,29 @@ function anima(arr) {
     });
     cube = new THREE.Mesh(box, black);
 
-    cube.position.set(arr[0].x, boxOffset, arr[0].z);
+    cube.position.set(arr[0].x, 0, arr[0].z);
     current.scene.add(cube);
   } else {
-    cube.position.set(arr[0].x, boxOffset, arr[0].z);
+    cube.position.set(arr[0].x, 0, arr[0].z);
   }
 
   let count = 0;
 
   gsap.to(cube.position, {
-    duration: arr.length / 10,
+    duration: arr.length / 2,
     onUpdate: () => {
       if (Math.random() < 0.2) {
         if (count < arr.length) {
-          cube.position.set(arr[count].x, boxOffset, arr[count].z);
+          cube.position.set(arr[count].x, 0, arr[count].z);
           count++;
         }
       }
     },
   });
 }
+
+const startPoint = new THREE.Vector2();
+const endPoint = new THREE.Vector2();
 
 /**
  *
@@ -354,6 +316,14 @@ function generateArrayBasedOnBoxes(): void {
     for (let j = 0; j < inner; j++) {
       let material = boxGroup.children[i].children[j].material;
       row.push(material.color.equals(black) ? 0 : 1);
+
+      if (material.color.equals(red)) {
+        startPoint.x = i;
+        startPoint.y = j;
+      } else if (material.color.equals(green)) {
+        endPoint.x = i;
+        endPoint.y = j;
+      }
     }
     grid.push(row);
   }
@@ -361,7 +331,27 @@ function generateArrayBasedOnBoxes(): void {
   console.log(grid, "我是数组");
 
   newGrid = grid;
-  // return grid;
+}
+
+function astarStartEnd(
+  grid: number[][],
+  start: THREE.Vector2,
+  end: THREE.Vector2
+) {
+  const graph = new AStar.Graph(grid, { diagonal: true });
+
+  // 使用 A* 算法寻找路径
+  const startNode = graph.grid[start.x][start.y];
+  const endNode = graph.grid[end.x][end.y];
+
+  const options = {
+    heuristic: AStar.astar.heuristics.manhattan, // 启发式函数
+    closest: false, // 是否返回最接近的节点，而不是最优路径
+    weight: 0.5, // 权重，用于调整路径搜索的速度和质量
+  };
+
+  // 执行A*搜索
+  return AStar.astar.search(graph, startNode, endNode, options);
 }
 
 function resetRoad() {
@@ -372,32 +362,16 @@ function resetRoad() {
   line = null;
 
   // 执行A*搜索
-  const result = astarSearch(newGrid, row.value - 1, row.value - 1);
+  const result = astarStartEnd(newGrid, startPoint, endPoint);
   console.log(result, "result");
 
   //生成路线
   generateRoad(newGrid, result);
 }
 
-function openDraw() {
-  current.orbitControls.enabled = false;
-  window.addEventListener("mousedown", onMouseDown);
-  window.addEventListener("mouseup", onMouseUp);
-
-  window.addEventListener("mousemove", onMouseClick, false);
-}
-
-function closeDraw() {
-  current.orbitControls.enabled = true;
-
-  window.removeEventListener("mousedown", onMouseDown);
-  window.removeEventListener("mouseup", onMouseUp);
-
-  window.removeEventListener("mousemove", onMouseClick, false);
-}
 const row = ref(10);
 
-const numbers = ref([
+const rowNumbers = ref([
   { name: "10*10", value: 10 },
   { name: "20*20", value: 20 },
   { name: "30*30", value: 30 },
@@ -406,6 +380,184 @@ const numbers = ref([
   { name: "80*80", value: 80 },
   { name: "100*100", value: 100 },
 ]);
+
+const sizeNumbers = ref([
+  { name: "0.1", value: 0.1 },
+  { name: "0.2", value: 0.2 },
+  { name: "0.3", value: 0.3 },
+  { name: "0.4", value: 0.4 },
+  { name: "0.5", value: 0.5 },
+  { name: "0.6", value: 0.6 },
+  { name: "0.7", value: 0.7 },
+  { name: "0.8", value: 0.8 },
+  { name: "0.9", value: 0.9 },
+  { name: "1.0", value: 1 },
+]);
+
+const activeButton = ref(1);
+
+let arr = [
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+    0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+    1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0,
+    1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1,
+  ],
+  [
+    1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0,
+    1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+  [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  ],
+];
 </script>
 
 <template>
@@ -414,19 +566,54 @@ const numbers = ref([
       <button @click="generate">生成地图</button>
       <button @click="deleteAll">删除</button>
       <div>
-        <!-- <button @click="generateArrayBasedOnBoxes">生成数组</button> -->
         <button @click="resetRoad">根据数组重新生成路线</button>
       </div>
       <div>
-        <button @click="openDraw">开启点击上色</button>
-        <button @click="closeDraw">关闭点击上色</button>
-        <button @click="drawColor = black">黑色</button>
-        <button @click="drawColor = white">白色</button>
+        <button @click="setBlack" :class="activeButton === 1 ? 'active' : ''">
+          设置障碍
+        </button>
+        <button @click="setWhite" :class="activeButton === 2 ? 'active' : ''">
+          设置空地
+        </button>
+        <button
+          @click="setStartingPoint"
+          :class="activeButton === 3 ? 'active' : ''"
+        >
+          设置起点
+        </button>
+        <button
+          @click="setEndPoint"
+          :class="activeButton === 4 ? 'active' : ''"
+        >
+          设置终点
+        </button>
       </div>
-      <div>
+      <div
+        style="
+          border: #ffffff solid 1px;
+          color: #ffffff;
+          margin-top: 5px;
+          padding: 5px;
+        "
+      >
         <label for="rowSelect">地图大小：</label>
         <select id="rowSelect" v-model="row">
-          <option v-for="num in numbers" :key="num" :value="num.value">
+          <option v-for="num in rowNumbers" :key="num" :value="num.value">
+            {{ num.name }}
+          </option>
+        </select>
+      </div>
+      <div
+        style="
+          border: #ffffff solid 1px;
+          color: #ffffff;
+          margin-top: 5px;
+          padding: 5px;
+        "
+      >
+        <label for="rowSelect">格子大小：</label>
+        <select id="rowSelect" v-model="boxSize">
+          <option v-for="num in sizeNumbers" :key="num" :value="num.value">
             {{ num.name }}
           </option>
         </select>
@@ -447,9 +634,36 @@ const numbers = ref([
     z-index: 200;
     position: absolute;
     padding-left: 20px;
-    height: 140px;
+    height: 200px;
     width: 150px;
-    background-color: white;
+    background-color: rgba(28, 42, 87, 0.1);
+
+    button {
+      display: inline-block;
+      padding: 5px 10px;
+      margin-right: 10px;
+      margin-top: 5px;
+      font-size: 8px;
+      font-weight: bold;
+      text-align: center;
+      text-decoration: none;
+      color: #ffffff;
+      background-color: rgba(28, 42, 87, 0.1);
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      opacity: 0.8; /* 初始半透明 */
+      border: #ffffff solid 1px;
+    }
+
+    /* 按下按钮时的样式 */
+
+    button:active {
+      background-color: rgba(255, 0, 0, 0.9);
+    }
+
+    .active {
+      background-color: rgba(255, 0, 0, 0.9);
+    }
   }
 }
 </style>
