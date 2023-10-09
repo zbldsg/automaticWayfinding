@@ -627,7 +627,7 @@ let arr = [
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: #070a2b;
+  background-color: #837b7b;
   background-size: 100%;
 
   .menu {
