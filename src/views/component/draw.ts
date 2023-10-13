@@ -7,7 +7,7 @@ let boxGroup;
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2(1, 1);
 
-const black = new THREE.Color(0x000000);
+const black = new THREE.Color(0x0000ff);
 const white = new THREE.Color(0xffffff);
 const red = new THREE.Color(0xff0000);
 const green = new THREE.Color(0x00ff00);

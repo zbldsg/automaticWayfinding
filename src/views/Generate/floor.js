@@ -6,7 +6,8 @@ const generateFloor = (data) => {
   loader.load(data.path, (gltf) => {
     replaceMaterial(gltf.scene);
     data.sceneObject = gltf.scene;
-    data.sceneObject.position.y = -1;
+    data.sceneObject.position.y = 0;
+    data.sceneObject.rotation.y = Math.PI;
     data.scene.add(gltf.scene);
   });
 };
