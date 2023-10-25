@@ -415,8 +415,9 @@ const numbers = ref([
     z-index: 200;
     position: absolute;
     padding-left: 20px;
-    height: 80px;
-    width: 150px;
+    font-size: 20px;
+    height: 180px;
+    width: 250px;
     background-color: white;
   }
 }
