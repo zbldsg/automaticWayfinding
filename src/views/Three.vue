@@ -35,7 +35,7 @@ let dom;
 const baseSceneData = {
   id: null,
   name: null,
-  path: "./model/1.glb",
+  path: "./model/2.glb",
   init: false,
   camera: null,
   control: null,
